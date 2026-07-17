@@ -1542,6 +1542,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Restoring switches to your saved account and leaves this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first.';
 
   @override
+  String get restorePendingWritesNotSynced =>
+      'Your recent changes are still syncing. Try again in a moment.';
+
+  @override
   String get homeBackupNudgeTitle => 'Back up your account';
 
   @override

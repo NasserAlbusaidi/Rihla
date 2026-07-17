@@ -240,6 +240,28 @@ final authEmailLinkBootstrapProvider = Provider<void>((ref) {
         ),
       );
       _showSnack(_humanize(error), isError: true);
+    } on PendingWritesNotFlushedException {
+      // #1281: an expected, retryable user-state — never a Sentry exception.
+      // Decision 5: op-state (inFlightOp/pendingEmail) is NOT cleared — this
+      // abort is transient (unlike the durable shell-populated block above),
+      // so leaving it primed lets a later re-tap/next-boot link arrival
+      // auto-retry once the writes flush. Clearing would instead break both
+      // retry routes (same-session re-tap is seenKeys-deduped; a cold-restart
+      // re-tap would hit pendingEmail == null and dead-end).
+      FirebaseConfig.log('Recovery: $op aborted — pending writes not synced');
+      unawaited(
+        Sentry.addBreadcrumb(
+          Breadcrumb(
+            category: 'auth.recovery',
+            message: 'recover swap aborted (pending writes)',
+          ),
+        ),
+      );
+      _showSnack(
+        _l10n()?.restorePendingWritesNotSynced ??
+            'Your recent changes are still syncing. Try again in a moment.',
+        isError: true,
+      );
     } catch (error, stack) {
       FirebaseConfig.log(
         'Recovery: $op completion failed',

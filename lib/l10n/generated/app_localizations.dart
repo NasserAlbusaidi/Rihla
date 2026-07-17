@@ -2589,6 +2589,12 @@ abstract class AppLocalizations {
   /// **'Restoring switches to your saved account and leaves this phone\'s current groups behind — they\'re tied to a temporary identity that can\'t be moved. Resolve them first.'**
   String get restoreBlockedHasData;
 
+  /// Snack/error shown when a cross-UID restore/recover swap aborts because pending Firestore writes haven't flushed yet (#1281). The swap is retryable once syncing finishes.
+  ///
+  /// In en, this message translates to:
+  /// **'Your recent changes are still syncing. Try again in a moment.'**
+  String get restorePendingWritesNotSynced;
+
   /// No description provided for @homeBackupNudgeTitle.
   ///
   /// In en, this message translates to:
