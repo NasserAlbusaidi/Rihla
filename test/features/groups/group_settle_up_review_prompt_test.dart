@@ -103,10 +103,13 @@ void main() {
     spy = null;
   });
 
-  Widget wrap() {
+  Widget wrap({
+    RecordingFunctionsService? functions,
+    ValueNotifier<bool>? showScreen,
+  }) {
     final service = GroupSettlementService.withFirestore(
       FakeFirebaseFirestore(),
-      functionsService: recordingFunctions,
+      functionsService: functions ?? recordingFunctions,
     );
     return ProviderScope(
       overrides: [
@@ -132,7 +135,16 @@ void main() {
           theme: AppTheme.lightTheme,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const GroupSettleUpScreen(groupId: _groupId),
+          // A swappable home lets the disposal test unmount ONLY the screen —
+          // the ProviderScope container survives, as in real navigation.
+          home: showScreen == null
+              ? const GroupSettleUpScreen(groupId: _groupId)
+              : ValueListenableBuilder<bool>(
+                  valueListenable: showScreen,
+                  builder: (_, visible, _) => visible
+                      ? const GroupSettleUpScreen(groupId: _groupId)
+                      : const SizedBox.shrink(),
+                ),
         ),
       ),
     );
@@ -182,4 +194,37 @@ void main() {
     expect(recordingFunctions.recordSettlementCalls, hasLength(1));
     expect(spy?.calls ?? 0, 0);
   });
+
+  testWidgets(
+    '#1263: screen disposed mid-record — the ask still fires and nothing '
+    'reads ref on the disposed element',
+    (tester) async {
+      final gated = GatedRecordingFunctionsService();
+      final showScreen = ValueNotifier<bool>(true);
+      addTearDown(showScreen.dispose);
+      await tester.pumpWidget(
+        wrap(functions: gated, showScreen: showScreen),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      // The callable is gated: the record continuation is parked at the
+      // in-flight write. Let the sheet finish closing, then dispose ONLY the
+      // screen (the user navigated away mid-write; the container survives).
+      await tester.pumpAndSettle();
+      showScreen.value = false;
+      await tester.pumpAndSettle();
+
+      gated.gate.complete();
+      await tester.pumpAndSettle();
+
+      // The settle WAS recorded — the app-level review ask must survive the
+      // screen's disposal (the #104/#412 capture discipline), not throw a
+      // ref-after-dispose StateError.
+      expect(gated.recordSettlementCalls, hasLength(1));
+      expect(spy?.calls ?? 0, 1);
+    },
+  );
 }

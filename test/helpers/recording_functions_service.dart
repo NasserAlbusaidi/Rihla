@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safar/core/services/firebase_functions_service.dart';
 import 'package:safar/features/ledger/models/record_settlement_result.dart';
@@ -57,5 +59,46 @@ class RecordingFunctionsService extends Fake implements FirebaseFunctionsService
     final e = error;
     if (e != null) throw e;
     return result;
+  }
+}
+
+/// [RecordingFunctionsService] whose `recordSettlement` parks at [gate] until
+/// the test releases it — models the in-flight-callable window so tests can
+/// dispose the calling screen mid-write (the #412-style "real offline/latency"
+/// modeling; `FakeFirebaseFirestore`/the base fake ack instantly, which proves
+/// nothing about post-await disposal safety).
+class GatedRecordingFunctionsService extends RecordingFunctionsService {
+  final Completer<void> gate = Completer<void>();
+
+  @override
+  Future<RecordSettlementResult> recordSettlement({
+    required String groupId,
+    required String mode,
+    String? eventId,
+    required String payerParticipantId,
+    required String recipientParticipantId,
+    required int amountFils,
+    required String currency,
+    String? note,
+    String? payerName,
+    String? recipientName,
+    required int observedPairEpoch,
+    List<Map<String, Object>>? legs,
+  }) async {
+    await gate.future;
+    return super.recordSettlement(
+      groupId: groupId,
+      mode: mode,
+      eventId: eventId,
+      payerParticipantId: payerParticipantId,
+      recipientParticipantId: recipientParticipantId,
+      amountFils: amountFils,
+      currency: currency,
+      note: note,
+      payerName: payerName,
+      recipientName: recipientName,
+      observedPairEpoch: observedPairEpoch,
+      legs: legs,
+    );
   }
 }

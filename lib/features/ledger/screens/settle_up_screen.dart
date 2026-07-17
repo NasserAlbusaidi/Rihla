@@ -509,6 +509,9 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     // never re-run after death (L5).
     final ledgerRevision = ref.read(ledgerRevisionProvider.notifier);
     final connectivity = ref.read(connectivityProvider.notifier);
+    // #1263: same capture discipline — the walk-end review ask must not read
+    // `ref` on a possibly-disposed element.
+    final reviewPrompt = ref.read(reviewPromptProvider);
     // Capture context-derived handles ONCE before the loop's awaits (same
     // #104/#412 discipline as the notifiers): the final summary snackbar uses
     // them after the walk without re-reading a possibly-disposed context.
@@ -557,7 +560,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       );
     }
     // #1263: one review ask per completed walk (see the single-tile site).
-    unawaited(ref.read(reviewPromptProvider).maybeRequest());
+    unawaited(reviewPrompt.maybeRequest());
   }
 
   /// #773: the LIVE directed-pair outstanding for [currency], recomputed from a
@@ -666,6 +669,10 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         : currentUid == toUserId
         ? RecordPaymentPerspective.receiving
         : RecordPaymentPerspective.recording;
+    // #1263: captured BEFORE the awaits (the #104/#412 discipline) — the
+    // review ask is an app-level post-write effect that must survive the
+    // screen being disposed mid-write, never a `ref` read on a dead element.
+    final reviewPrompt = ref.read(reviewPromptProvider);
 
     final result = await showRecordPaymentSheet(
       context,
@@ -798,7 +805,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     if (stepLabel == null &&
         outcome.kind == _StepOutcomeKind.recorded &&
         !outcome.alreadyRecorded) {
-      unawaited(ref.read(reviewPromptProvider).maybeRequest());
+      unawaited(reviewPrompt.maybeRequest());
     }
     return outcome;
   }

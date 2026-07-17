@@ -532,6 +532,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // rebuild between steps). The walk dies with the screen, so a captured list
     // is never re-run after death (L5).
     final connectivity = ref.read(connectivityProvider.notifier);
+    // #1263: same capture discipline — the walk-end review ask must not read
+    // `ref` on a possibly-disposed element.
+    final reviewPrompt = ref.read(reviewPromptProvider);
     // Capture context-derived handles ONCE before the loop's awaits (same
     // #104/#412 discipline): the final summary snackbar uses them after the
     // walk without re-reading a possibly-disposed context.
@@ -581,7 +584,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       );
     }
     // #1263: one review ask per completed walk (see the single-tile site).
-    unawaited(ref.read(reviewPromptProvider).maybeRequest());
+    unawaited(reviewPrompt.maybeRequest());
   }
 
   /// Drives one record sheet → validate → write. Returns the per-step
@@ -640,6 +643,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         : currentUid == toUserId
         ? RecordPaymentPerspective.receiving
         : RecordPaymentPerspective.recording;
+    // #1263: captured BEFORE the awaits (the #104/#412 discipline) — the
+    // review ask is an app-level post-write effect that must survive the
+    // screen being disposed mid-write, never a `ref` read on a dead element.
+    final reviewPrompt = ref.read(reviewPromptProvider);
     final result = await showRecordPaymentSheet(
       context,
       currency: currency,
@@ -781,7 +788,7 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     if (stepLabel == null &&
         outcome.kind == _StepOutcomeKind.recorded &&
         !outcome.alreadyRecorded) {
-      unawaited(ref.read(reviewPromptProvider).maybeRequest());
+      unawaited(reviewPrompt.maybeRequest());
     }
     return outcome;
   }

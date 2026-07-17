@@ -80,7 +80,11 @@ void main() {
     ),
   ];
 
-  Widget buildScreen(FakeFirebaseFirestore fakeDb) {
+  Widget buildScreen(
+    FakeFirebaseFirestore fakeDb, {
+    RecordingFunctionsService? functions,
+    ValueNotifier<bool>? showScreen,
+  }) {
     final overrides = [
       sharedPreferencesProvider.overrideWithValue(prefs),
       currentUserIdProvider.overrideWithValue('bob'),
@@ -108,7 +112,7 @@ void main() {
       settlementServiceProvider.overrideWithValue(
         SettlementService.withFirestore(
           fakeDb,
-          functionsService: recordingFunctions,
+          functionsService: functions ?? recordingFunctions,
         ),
       ),
       groupActivityServiceProvider.overrideWithValue(
@@ -117,13 +121,22 @@ void main() {
       reviewPromptProvider.overrideWith((ref) => spy = _SpyReviewPrompt(ref)),
     ];
 
+    const screen = SettleUpScreen(groupId: groupId, eventId: eventId);
     return ProviderScope(
       overrides: overrides,
       child: MaterialApp(
         theme: AppTheme.lightTheme,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const SettleUpScreen(groupId: groupId, eventId: eventId),
+        // A swappable home lets the disposal test unmount ONLY the screen —
+        // the ProviderScope container survives, as it does in real navigation.
+        home: showScreen == null
+            ? screen
+            : ValueListenableBuilder<bool>(
+                valueListenable: showScreen,
+                builder: (_, visible, _) =>
+                    visible ? screen : const SizedBox.shrink(),
+              ),
       ),
     );
   }
@@ -175,4 +188,41 @@ void main() {
 
     expect(spy?.calls ?? 0, 0);
   });
+
+  testWidgets(
+    '#1263: screen disposed mid-record — the ask still fires and nothing '
+    'reads ref on the disposed element',
+    (tester) async {
+      final gated = GatedRecordingFunctionsService();
+      final showScreen = ValueNotifier<bool>(true);
+      addTearDown(showScreen.dispose);
+      final fakeDb = FakeFirebaseFirestore();
+      await tester.pumpWidget(
+        buildScreen(fakeDb, functions: gated, showScreen: showScreen),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(GroupKeys.settleUpRecordPaymentButton),
+      );
+      await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+      // The callable is gated: the record continuation is parked at the
+      // in-flight write. Let the sheet finish closing, then dispose ONLY the
+      // screen (the user navigated away mid-write; the container survives).
+      await tester.pumpAndSettle();
+      showScreen.value = false;
+      await tester.pumpAndSettle();
+
+      gated.gate.complete();
+      await tester.pumpAndSettle();
+
+      // The settle WAS recorded — the app-level review ask must survive the
+      // screen's disposal (the #104/#412 capture discipline), not throw a
+      // ref-after-dispose StateError.
+      expect(gated.recordSettlementCalls, hasLength(1));
+      expect(spy?.calls ?? 0, 1);
+    },
+  );
 }
