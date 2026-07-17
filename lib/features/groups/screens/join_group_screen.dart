@@ -134,16 +134,31 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   /// no-shadow path and the "I'm new" fallback.
   Future<void> _doJoin({required bool preferClaimHint}) async {
     if (ref.read(groupLoadingProvider)) return;
-    ref.read(groupLoadingProvider.notifier).state = true;
-    ref.read(groupErrorProvider.notifier).state = null;
-
+    // #1275: everything ref-derived that runs after an await below is captured
+    // up front — the callable races the user's back button, and any `ref` use
+    // on a disposed ConsumerState throws. The notifiers live on the root
+    // container, so the state resets stay correct after this screen is gone
+    // (an unguarded post-await read left groupLoadingProvider stranded true,
+    // dead-locking the Join CTA app-wide until restart). Only UI work
+    // (snackbars, navigation) stays behind `mounted`.
+    final groupLoading = ref.read(groupLoadingProvider.notifier);
+    final groupError = ref.read(groupErrorProvider.notifier);
+    final freshness = ref.read(balanceAggregateFreshnessProvider.notifier);
+    final groupService = ref.read(groupServiceProvider);
+    final settings = ref.read(settingsProvider.notifier);
+    final notificationPrompt = ref.read(notificationPromptProvider);
     final trimmedName = _nameController.text.trim();
+    final inviteCode = _codeController.text.trim();
+
+    groupLoading.state = true;
+    groupError.state = null;
+
     try {
-      await ref.read(settingsProvider.notifier).setDeviceName(trimmedName);
+      await settings.setDeviceName(trimmedName);
     } on DisplayNameTakenException catch (e) {
       // #390: the chosen name collides with another live member in one of the
       // user's EXISTING groups; reject before attempting the join.
-      ref.read(groupLoadingProvider.notifier).state = false;
+      groupLoading.state = false;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -155,23 +170,22 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     }
 
     try {
-      final group = await ref
-          .read(groupServiceProvider)
-          .joinGroup(inviteCode: _codeController.text.trim());
-      ref
-          .read(balanceAggregateFreshnessProvider.notifier)
-          .markGroupDirty(group.id);
-      ref.read(groupLoadingProvider.notifier).state = false;
+      final group = await groupService.joinGroup(inviteCode: inviteCode);
+      freshness.markGroupDirty(group.id);
+      groupLoading.state = false;
+      // When disposed, _logJoined's internal ref use throws into its own
+      // swallow-all — the best-effort member_joined row (#1140, D-32 loss
+      // tolerance) is the only casualty.
       _logJoined(group.id);
       HapticService.success(); // D-02: double-tap "done" feel
       // First natural moment to ask for push permission (#288).
-      unawaited(ref.read(notificationPromptProvider).maybePrompt());
+      unawaited(notificationPrompt.maybePrompt());
       if (mounted) {
         context.pushReplacement('/group/${group.id}');
       }
     } catch (e) {
-      ref.read(groupLoadingProvider.notifier).state = false;
-      ref.read(groupErrorProvider.notifier).state = e.toString();
+      groupLoading.state = false;
+      groupError.state = e.toString();
       if (!mounted) return;
       // #278 PR9: an "I'm new" name that collides with a shadow gets the
       // actionable claim-instead hint and returns to the picker.
