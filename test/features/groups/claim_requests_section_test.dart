@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,7 +39,11 @@ void main() {
         .thenAnswer((_) async => pending);
   });
 
-  Widget harness({required bool isCreator, bool durable = true}) {
+  Widget harness({
+    required bool isCreator,
+    bool durable = true,
+    Widget? child,
+  }) {
     return ProviderScope(
       overrides: [
         firebaseFunctionsServiceProvider.overrideWithValue(fns),
@@ -50,7 +56,9 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: ClaimRequestsSection(groupId: 'g1', isCreator: isCreator),
+          body:
+              child ??
+              ClaimRequestsSection(groupId: 'g1', isCreator: isCreator),
         ),
       ),
     );
@@ -222,6 +230,48 @@ void main() {
           approve: any(named: 'approve'),
         ),
       );
+    },
+  );
+
+  testWidgets(
+    'C8 (#1276): finally-block ref.invalidate must not throw when the row '
+    'is disposed while decideClaimRequest is in flight',
+    (tester) async {
+      final completer = Completer<ClaimDecisionResult>();
+      when(
+        () => fns.decideClaimRequest(
+          groupId: any(named: 'groupId'),
+          requestId: any(named: 'requestId'),
+          approve: any(named: 'approve'),
+        ),
+      ).thenAnswer((_) => completer.future);
+
+      await tester.pumpWidget(harness(isCreator: true));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(GroupKeys.claimApprove('rid')));
+      await tester.pump();
+
+      // Dispose the row mid-flight: swap the ProviderScope's child while the
+      // ProviderScope element itself (same type at the same tree position,
+      // via the shared `harness`) stays mounted, so the provider container
+      // survives and only the row's State is torn down.
+      await tester.pumpWidget(
+        harness(isCreator: true, child: const SizedBox.shrink()),
+      );
+      await tester.pump();
+
+      completer.complete(
+        const ClaimDecisionResult(
+          requestId: 'rid',
+          status: 'claimed',
+          alreadyClaimed: false,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
     },
   );
 }

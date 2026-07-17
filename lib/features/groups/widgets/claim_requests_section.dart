@@ -137,9 +137,13 @@ class _ClaimRequestRowState extends ConsumerState<_ClaimRequestRow> {
         SnackBar(content: Text(l10n.groupClaimApproveError)),
       );
     } finally {
-      // Refresh so an approved/declined request drops off the list.
-      ref.invalidate(groupClaimRequestsProvider(widget.groupId));
-      if (mounted) setState(() => _busy = false);
+      // Refresh so an approved/declined request drops off the list. Guarded:
+      // the provider is autoDispose, so an unmounted section self-heals on
+      // next mount — and an unguarded ref throws once the widget is disposed.
+      if (mounted) {
+        ref.invalidate(groupClaimRequestsProvider(widget.groupId));
+        setState(() => _busy = false);
+      }
     }
   }
 
