@@ -4,6 +4,14 @@ All notable changes to Rihla are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Rihla now asks for a store review right after a settle-up completes — at
+  most once every two weeks, only when the platform review flow is available,
+  and never on QA builds (#1263).
+
 ## [1.9.2] — 2026-07-16
 
 Rihla 1.9.2 brings Android to parity with the iOS 1.9.1 (37) build and ships
