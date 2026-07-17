@@ -404,8 +404,30 @@ exit 64
 
   test(
     'RIHLA_SKIP_DEVICE_PRESENCE_QA=yes skips ONLY device presence — '
-    'remaining checks still run and the gate passes (#1291)',
+    'the matrix check still runs (#1291)',
     () async {
+      // Hermetic: synthetic complete matrix, no reliance on this machine's
+      // config.json / google-services files (gitignored — absent on CI, so
+      // neither those PASS lines nor the overall exit code are assertable).
+      final tempDir = Directory.systemTemp.createTempSync(
+        'rihla-qa-matrix-',
+      );
+      addTearDown(() => tempDir.deleteSync(recursive: true));
+      final matrix = File('${tempDir.path}/REAL-DEVICE-QA.md')
+        ..writeAsStringSync('''
+| ID | Area | iOS | Android | Evidence |
+|---|---|---|---|---|
+| RD-01 | Create group | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | Group created; commit abcdef123456 |
+| RD-02 | Join group by invite code | Deferred — v1.2 Android-only | Pass Pixel QA 2 Android 15 | Invite QA1234; commit abcdef123456 |
+| RD-03 | Delete group | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | Group deleted; APK sha-256 abcdef1234567890 |
+| RD-04 | Two-device ledger identity | Deferred — v1.2 Android-only | Pass two Pixel devices | Screenshots both devices; app-release.apk sha256 abcdef1234567890 |
+| RD-05 | Decimal expense input | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | OMR 1.250 saved; AAB sha256 abcdef1234567890 |
+| RD-06 | Offline and reconnect | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | Reconnect pass; Play track internal build 15 |
+| RD-07 | Notification opt-in | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | fcm token exists; build number 15 |
+| RD-08 | Notification opt-out | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | fcm token removed; commit abcdef123456 |
+| RD-09 | Arabic RTL golden path | Deferred — v1.2 Android-only | Pass Pixel QA 1 Android 15 | RTL screenshots; commit abcdef123456 |
+''');
+
       final result = await Process.run(
         'bash',
         ['tool/check_real_device_qa_gate.sh'],
@@ -413,23 +435,20 @@ exit 64
           'RIHLA_SKIP_IOS_QA': 'yes',
           'RIHLA_SKIP_DEVICE_PRESENCE_QA': 'yes',
           'RIHLA_SINGLE_DEVICE_QA_OK': '',
+          'RIHLA_REAL_DEVICE_QA_DOC': matrix.path,
         },
       );
 
       final output = '${result.stdout}\n${result.stderr}';
-      expect(result.exitCode, 0);
       expect(
         output,
         contains('device-presence check SKIPPED by explicit owner decision'),
       );
+      // Presence skipped in BOTH directions: no device FAIL, no device PASS.
+      expect(output, isNot(contains('No physical Android device detected')));
+      expect(output, isNot(contains('Physical Android device detected')));
       // The skip must not swallow the rest of the gate.
       expect(output, contains('Real-device QA matrix is complete'));
-      expect(
-        output,
-        contains('config.json exists and does not enable Firebase emulators'),
-      );
-      expect(output, contains('Real-device QA gate PASS'));
-      expect(output, isNot(contains('No physical Android device detected')));
     },
   );
 
