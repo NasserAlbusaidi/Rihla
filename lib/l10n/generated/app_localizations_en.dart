@@ -2396,6 +2396,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupJoinTooManyAttempts => 'Too many attempts. Try again later.';
 
   @override
+  String get groupJoinGroupFull =>
+      'This group is full — it has reached the 50-member limit.';
+
+  @override
   String get groupJoinPleaseSignIn => 'Please sign in and try again.';
 
   @override

@@ -4023,6 +4023,12 @@ abstract class AppLocalizations {
   /// **'Too many attempts. Try again later.'**
   String get groupJoinTooManyAttempts;
 
+  /// No description provided for @groupJoinGroupFull.
+  ///
+  /// In en, this message translates to:
+  /// **'This group is full — it has reached the 50-member limit.'**
+  String get groupJoinGroupFull;
+
   /// No description provided for @groupJoinPleaseSignIn.
   ///
   /// In en, this message translates to:

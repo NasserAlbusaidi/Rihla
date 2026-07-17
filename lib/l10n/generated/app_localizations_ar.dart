@@ -2447,6 +2447,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupJoinTooManyAttempts => 'محاولات كثيرة جدًا. حاول لاحقًا.';
 
   @override
+  String get groupJoinGroupFull =>
+      'هذه المجموعة ممتلئة — وصلت إلى الحد الأقصى (50 عضوًا).';
+
+  @override
   String get groupJoinPleaseSignIn => 'سجّل الدخول وحاول مرة أخرى.';
 
   @override

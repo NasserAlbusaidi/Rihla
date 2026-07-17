@@ -366,6 +366,19 @@ class GroupService extends FirestoreRepository {
           .call({'inviteCode': inviteCode, 'displayName': displayName});
       return result.data['groupId'] as String;
     } on FirebaseFunctionsException catch (error) {
+      // #1282: the server tags the roster-cap reject via details so the client
+      // can discriminate it from the other failed-precondition throws (event
+      // fan-in bound, malformed invite/membership) — a code-only arm would
+      // mislabel those as "group full".
+      final details = error.details;
+      if (details is Map && details['reason'] == 'group-full') {
+        // This string deliberately DUPLICATES the server's HttpsError message
+        // instead of reading error.message — it is the screen's #279-pattern
+        // re-localization contract (_errorMessage substring-matches this
+        // canned string, not the raw server text). Do NOT "dedupe" to
+        // error.message.
+        throw Exception('This group has reached the maximum number of members.');
+      }
       throw Exception(_joinGroupErrorMessage(error.code));
     }
   }

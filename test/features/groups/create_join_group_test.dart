@@ -932,6 +932,71 @@ void main() {
     });
 
     testWidgets(
+      '#1282: group-full join shows the localized roster-cap message',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Joiner',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final fakeDb = FakeFirebaseFirestore();
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupLoadingProvider.overrideWith((ref) => false),
+              groupErrorProvider.overrideWith((ref) => null),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-joiner',
+                  joinGroupCallableOverride:
+                      ({required inviteCode, required displayName}) async {
+                        // #1282: the server tags this failed-precondition via
+                        // details.reason so the provider re-maps it to the
+                        // canned group-full string this screen re-localizes.
+                        throw FirebaseFunctionsException(
+                          code: 'failed-precondition',
+                          message:
+                              'This group has reached the maximum number of members.',
+                          details: const {'reason': 'group-full'},
+                        );
+                      },
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const JoinGroupScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        await tester.enterText(find.byType(TextFormField).first, 'Joiner');
+        await tester.enterText(find.byType(TextFormField).last, 'ABCD23');
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'This group is full — it has reached the 50-member limit.',
+          ),
+          findsOneWidget,
+        );
+        // NOT the generic failure copy.
+        expect(
+          find.text(
+            "Couldn't join the group. Check your connection and try again.",
+          ),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
       '#633: successful join marks the group aggregate dirty before routing',
       (tester) async {
         SharedPreferences.setMockInitialValues({

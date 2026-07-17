@@ -683,6 +683,7 @@
   "groupJoinNameTaken": "هذا الاسم مستخدم بالفعل في هذه المجموعة. الرجاء اختيار اسم مختلف.",
   "displayNameTakenInGroup": "هذا الاسم مستخدم بالفعل في {groupName}. الرجاء اختيار اسم مختلف.",
   "groupJoinTooManyAttempts": "محاولات كثيرة جدًا. حاول لاحقًا.",
+  "groupJoinGroupFull": "هذه المجموعة ممتلئة — وصلت إلى الحد الأقصى (50 عضوًا).",
   "groupJoinPleaseSignIn": "سجّل الدخول وحاول مرة أخرى.",
   "groupJoinDeviceVerificationFailed": "تعذّر التحقق من هذا الجهاز. حاول مرة أخرى، أو حدّث التطبيق من متجر Play.",
   "groupJoinFailed": "تعذّر الانضمام إلى المجموعة. تحقق من اتصالك وحاول مرة أخرى.",
