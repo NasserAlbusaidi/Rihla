@@ -15,6 +15,14 @@
 #                          deliberately deferred to pre-promotion testing on the
 #                          Play "first" track. Unset (the default) keeps the
 #                          strict two-device gate.
+#   RIHLA_SKIP_DEVICE_PRESENCE_QA=yes
+#                          Explicit per-release owner override: skip ONLY the
+#                          connected-device presence check (the config.json /
+#                          google-services / QA-matrix-doc checks still run).
+#                          On-device verification defers to the Play "first" /
+#                          TestFlight tracks for that release. Set it on the
+#                          release.sh invocation, never in CI or the shell
+#                          profile — it must be a per-release decision.
 #   RIHLA_REAL_DEVICE_QA_DOC
 #                          Optional test-only override for the QA matrix file.
 set -euo pipefail
@@ -128,7 +136,9 @@ if [ "$FAILURES" -ne 0 ]; then
   exit 1
 fi
 
-if flutter devices --machine >"$TMP_FILE"; then
+if [ "${RIHLA_SKIP_DEVICE_PRESENCE_QA:-}" = "yes" ]; then
+  echo "WARN: RIHLA_SKIP_DEVICE_PRESENCE_QA=yes — device-presence check SKIPPED by explicit owner decision; on-device verification defers to the Play 'first' / TestFlight tracks for this release."
+elif flutter devices --machine >"$TMP_FILE"; then
   ios_devices="$(jq -r '
     .[]
     | select(.targetPlatform == "ios" and .emulator == false)
