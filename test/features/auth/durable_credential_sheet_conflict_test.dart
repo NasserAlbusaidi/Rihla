@@ -398,6 +398,40 @@ void main() {
     verifyNever(() => recovery.signOutCurrentDevice());
   });
 
+  testWidgets(
+    'PendingWritesNotFlushedException on switch clears the conflict and '
+    'renders the still-syncing copy (#1281) — no Sentry capture',
+    (tester) async {
+      when(
+        () => recovery.restoreWithGoogle(credential: any(named: 'credential')),
+      ).thenThrow(PendingWritesNotFlushedException(const Duration(seconds: 5)));
+
+      // Primes BOTH shell gates empty: the build-time _conflictShellEmpty (via
+      // the harness()'s userGroupsProvider/firebaseUserProvider overrides) AND
+      // _switchAccount's own _outgoingShellEmpty() re-check, which reads the
+      // SAME overridden providers.
+      final l10n = await openAndConflict(tester, groups: Stream.value(const []));
+      expect(find.byKey(const Key('durableGate.switch')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('durableGate.switch')));
+      await tester.pumpAndSettle();
+
+      // Decision 6: the conflict is cleared so build() takes the
+      // `conflict == null` branch, where _errorText actually renders.
+      expect(result, isNull);
+      expect(
+        find.byKey(const Key('durableGate.error')),
+        findsOneWidget,
+      );
+      expect(
+        find.text(l10n.restorePendingWritesNotSynced),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('durableGate.switch')), findsNothing);
+      verifyNever(() => recovery.signOutCurrentDevice());
+    },
+  );
+
   // -----------------------------------------------------------------------
   // #1256 Apple-conflict dispatch. An AppleLinkConflictException must route
   // the switch to restoreWithApple with the SAME failed credential and render

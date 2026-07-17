@@ -251,4 +251,30 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'PendingWritesNotFlushedException surfaces the still-syncing snack '
+    '(#1281)',
+    (tester) async {
+      when(() => groupService.watchUserGroups(any()))
+          .thenAnswer((_) => Stream.value(const []));
+      when(() => recovery.restoreWithApple())
+          .thenThrow(PendingWritesNotFlushedException(const Duration(seconds: 5)));
+
+      await tester.pumpWidget(
+        buildApp(
+          userStream: Stream.value(MockUser(isAnonymous: true, uid: 'anon-1')),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(_kRestoreButton));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(AppLocalizationsEn().restorePendingWritesNotSynced),
+        findsOneWidget,
+      );
+    },
+  );
 }

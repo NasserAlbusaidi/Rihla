@@ -1337,6 +1337,10 @@
     "description": "Snack shown when an Apple restore fails for any reason other than a user cancel (#1256)."
   },
   "restoreBlockedHasData": "Restoring switches to your saved account and leaves this phone's current groups behind — they're tied to a temporary identity that can't be moved. Resolve them first.",
+  "restorePendingWritesNotSynced": "Your recent changes are still syncing. Try again in a moment.",
+  "@restorePendingWritesNotSynced": {
+    "description": "Snack/error shown when a cross-UID restore/recover swap aborts because pending Firestore writes haven't flushed yet (#1281). The swap is retryable once syncing finishes."
+  },
   "homeBackupNudgeTitle": "Back up your account",
   "homeBackupNudgeBody": "Your groups and expenses live only on this phone. Link Google so a new phone, reinstall, or lost device can't erase them.",
   "homeBackupNudgeBodyIos": "Your groups and expenses live only on this phone. Link an account so a new phone, reinstall, or lost device can't erase them.",
