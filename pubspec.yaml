@@ -65,6 +65,8 @@ dependencies:
   pdf: ">=3.12.0 <3.13.0" # 3.13 needs Dart >=3.12; this SDK is 3.11.x
   shared_preferences: ^2.5.4
   package_info_plus: ^8.2.1
+  # Store review ask (#1263) — Play In-App Review / SKStoreReviewController.
+  in_app_review: ^2.0.12
 
   # QR codes (T3.J/K)
   qr_flutter: ^4.1.0
