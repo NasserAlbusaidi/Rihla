@@ -8,6 +8,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
 import 'package:safar/core/services/cache_uid_barrier.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
+import 'package:safar/features/auth/services/recovery_outcome.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
@@ -188,7 +189,7 @@ void main() {
       verifyNever(() => auth.signOut());
     });
 
-    test('still swaps and restarts when waitForPendingWrites exceeds the '
+    test('aborts before the swap when waitForPendingWrites exceeds the '
         'timeout', () async {
       final events = <String>[];
       final credential = _FakeAuthCredential();
@@ -198,6 +199,7 @@ void main() {
       when(
         firestore.waitForPendingWrites,
       ).thenAnswer((_) => Completer<void>().future);
+      var factoryInvoked = false;
       when(() => auth.signInWithCredential(credential)).thenAnswer((_) async {
         events.add('signIn');
         return userCredential;
@@ -205,15 +207,28 @@ void main() {
 
       final service = buildService(
         events: events,
-        googleCredentialFactory: () async => credential,
+        googleCredentialFactory: () async {
+          factoryInvoked = true;
+          return credential;
+        },
         removeFcmToken: () async => events.add('removeToken'),
       );
 
-      await service.restoreWithGoogle(
-        pendingWritesTimeout: const Duration(milliseconds: 50),
+      await expectLater(
+        service.restoreWithGoogle(
+          pendingWritesTimeout: const Duration(milliseconds: 50),
+        ),
+        throwsA(isA<PendingWritesNotFlushedException>()),
       );
 
-      expect(events, ['removeToken', 'engage', 'signIn', 'restart']);
+      // #1281: the preflight runs BEFORE the credential factory, FCM
+      // removal, isolation, and the swap itself — an abort here leaves the
+      // shell fully intact (no restart, nothing stranded).
+      expect(factoryInvoked, isFalse);
+      expect(events, isEmpty);
+      verifyNever(() => auth.signInWithCredential(any()));
+      verifyNever(() => auth.signOut());
+      expect(readAndClearRecoveryOutcome(prefs), isNull);
     });
 
     test('still swaps and restarts when removeFcmToken hangs offline — the '

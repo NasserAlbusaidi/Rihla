@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:safar/core/services/cache_isolation_controller.dart';
 import 'package:safar/core/services/cache_uid_barrier.dart';
 import 'package:safar/features/auth/services/auth_recovery_service.dart';
+import 'package:safar/features/auth/services/recovery_outcome.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
@@ -198,7 +199,7 @@ void main() {
       ).called(1);
     });
 
-    test('still swaps and restarts when waitForPendingWrites exceeds the '
+    test('aborts before the swap when waitForPendingWrites exceeds the '
         'timeout', () async {
       final events = <String>[];
       final userCredential = _MockUserCredential();
@@ -223,12 +224,28 @@ void main() {
       );
       await service.setPendingEmail('saved@example.com');
 
-      await service.restoreWithEmailLink(
-        link,
-        pendingWritesTimeout: const Duration(milliseconds: 50),
+      await expectLater(
+        service.restoreWithEmailLink(
+          link,
+          pendingWritesTimeout: const Duration(milliseconds: 50),
+        ),
+        throwsA(isA<PendingWritesNotFlushedException>()),
       );
 
-      expect(events, ['removeToken', 'engage', 'signIn', 'restart']);
+      // #1281: the preflight runs BEFORE FCM removal, isolation, and the
+      // swap itself — an abort here leaves the shell fully intact (no
+      // restart, nothing stranded). Decision 5: op-state is NOT cleared
+      // (the try/finally that clears it is never entered).
+      expect(events, isEmpty);
+      verifyNever(
+        () => auth.signInWithEmailLink(
+          email: any(named: 'email'),
+          emailLink: any(named: 'emailLink'),
+        ),
+      );
+      verifyNever(() => auth.signOut());
+      expect(service.readPendingEmail(), 'saved@example.com');
+      expect(readAndClearRecoveryOutcome(prefs), isNull);
     });
 
     test('still swaps and restarts when removeFcmToken hangs offline — the '

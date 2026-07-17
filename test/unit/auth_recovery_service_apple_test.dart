@@ -314,7 +314,7 @@ void main() {
       verify(() => auth.signInWithCredential(credential)).called(1);
     });
 
-    test('still swaps and restarts when waitForPendingWrites exceeds the '
+    test('aborts before the swap when waitForPendingWrites exceeds the '
         'timeout', () async {
       final events = <String>[];
       final credential = _FakeAuthCredential();
@@ -323,6 +323,7 @@ void main() {
       when(
         firestore.waitForPendingWrites,
       ).thenAnswer((_) => Completer<void>().future);
+      var factoryInvoked = false;
       when(() => auth.signInWithCredential(credential)).thenAnswer((_) async {
         events.add('signIn');
         return userCredential;
@@ -330,15 +331,28 @@ void main() {
 
       final service = buildService(
         events: events,
-        appleCredentialFactory: () async => _bundle(credential),
+        appleCredentialFactory: () async {
+          factoryInvoked = true;
+          return _bundle(credential);
+        },
         removeFcmToken: () async => events.add('removeToken'),
       );
 
-      await service.restoreWithApple(
-        pendingWritesTimeout: const Duration(milliseconds: 50),
+      await expectLater(
+        service.restoreWithApple(
+          pendingWritesTimeout: const Duration(milliseconds: 50),
+        ),
+        throwsA(isA<PendingWritesNotFlushedException>()),
       );
 
-      expect(events, ['removeToken', 'engage', 'signIn', 'restart']);
+      // #1281: the preflight runs BEFORE the credential factory, FCM
+      // removal, isolation, and the swap itself — an abort here leaves the
+      // shell fully intact (no restart, nothing stranded).
+      expect(factoryInvoked, isFalse);
+      expect(events, isEmpty);
+      verifyNever(() => auth.signInWithCredential(any()));
+      verifyNever(() => auth.signOut());
+      expect(readAndClearRecoveryOutcome(prefs), isNull);
     });
 
     test('a non-timeout removeFcmToken error still aborts cleanly — no '

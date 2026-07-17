@@ -34,7 +34,10 @@ typedef FcmTokenRemover = Future<void> Function();
 
 class PendingWritesNotFlushedException extends TimeoutException {
   PendingWritesNotFlushedException(Duration timeout)
-    : super('Pending Firestore writes did not flush before sign-out', timeout);
+    : super(
+        'Pending Firestore writes did not flush before a cross-UID swap',
+        timeout,
+      );
 }
 
 /// True when a LINK attempt (#441 PR2 gate) failed because the chosen Google
@@ -95,6 +98,18 @@ class AuthRecoveryService {
   final FcmTokenRemover _removeFcmToken;
 
   static Future<void> _noopFcmTokenRemover() async {}
+
+  /// Pre-flight for every cross-UID swap: flush pending writes or abort while
+  /// the shell is still intact (#1281 — the restores previously logged
+  /// "restoring anyway" here, silently destroying queued writes).
+  Future<void> _flushPendingWritesOrThrow(Duration timeout) async {
+    try {
+      final firestore = _firestore ?? FirebaseFirestore.instance;
+      await firestore.waitForPendingWrites().timeout(timeout);
+    } on TimeoutException {
+      throw PendingWritesNotFlushedException(timeout);
+    }
+  }
 
   /// Remove the outgoing UID's FCM token before a cross-UID swap, bounded so an
   /// offline delete that never acks (#412) can't hang the restore before the
@@ -322,27 +337,34 @@ class AuthRecoveryService {
   /// discard a populated shell.
   ///
   /// Ordering is load-bearing:
-  /// 1. Obtain the credential FIRST — interactive, so a user-cancel / missing
+  /// 1. Flush pending writes or ABORT (#1281) — cheapest possible bail: no
+  ///    Google sheet spent, no FCM removal, no isolation, no restart. Runs
+  ///    before everything else so an abort leaves the anon shell fully
+  ///    intact. The post-isolation best-effort wait below (unchanged) stays
+  ///    as defense in depth for writes queued during the interactive sheet.
+  /// 2. Obtain the credential — interactive, so a user-cancel / missing
   ///    idToken / missing serverClientId throws here with the anon shell fully
   ///    intact (no overlay, no swap, no restart). [credential] lets the
   ///    durable-credential sheet conflict path reuse the Google credential from
   ///    its failed link.
-  /// 2. Remove the FCM token BEFORE the swap — owner-only `fcm_tokens` rules
+  /// 3. Remove the FCM token BEFORE the swap — owner-only `fcm_tokens` rules
   ///    make `fcm_tokens/{oldUid}` un-deletable once `request.auth.uid` changes,
   ///    and [CacheIsolationController.engageIsolation] invalidates the
   ///    notification provider, so this must precede both. Best-effort.
-  /// 3. Engage isolation (cover cached UI + tear down leaf subscriptions)
+  /// 4. Engage isolation (cover cached UI + tear down leaf subscriptions)
   ///    BEFORE any auth change; the `finally` GUARANTEES the restart on success
   ///    AND failure so the overlay can never strand the user.
-  /// 4. Flush pending writes, mark the cache dirty (awaited, so the cold boot
-  ///    clears the outgoing UID's cache even if the process dies before
-  ///    restart), then swap. NO explicit signOut: a failed swap MUST leave the
-  ///    current anon user signed in (#414/#213), and the guaranteed restart
-  ///    returns to it.
+  /// 5. Best-effort re-wait for pending writes, mark the cache dirty (awaited,
+  ///    so the cold boot clears the outgoing UID's cache even if the process
+  ///    dies before restart), then swap. NO explicit signOut: a failed swap
+  ///    MUST leave the current anon user signed in (#414/#213), and the
+  ///    guaranteed restart returns to it.
   Future<UserCredential> restoreWithGoogle({
     AuthCredential? credential,
     Duration pendingWritesTimeout = const Duration(seconds: 5),
   }) async {
+    await _flushPendingWritesOrThrow(pendingWritesTimeout);
+
     final googleCredential = credential ?? await _googleCredentialFactory();
 
     // Owner-only rules block deleting fcm_tokens/{oldUid} after the UID swaps,
@@ -399,6 +421,8 @@ class AuthRecoveryService {
     AuthCredential? credential,
     Duration pendingWritesTimeout = const Duration(seconds: 5),
   }) async {
+    await _flushPendingWritesOrThrow(pendingWritesTimeout);
+
     final appleCredential =
         credential ?? (await _appleCredentialFactory()).credential;
 
@@ -470,6 +494,8 @@ class AuthRecoveryService {
         'first or pass overrideEmail',
       );
     }
+
+    await _flushPendingWritesOrThrow(pendingWritesTimeout);
 
     // Owner-only rules block deleting fcm_tokens/{oldUid} after the UID
     // swaps, and engageIsolation invalidates the notification provider — so
@@ -570,12 +596,7 @@ class AuthRecoveryService {
       );
     }
     if (!discardPendingWrites) {
-      try {
-        final firestore = _firestore ?? FirebaseFirestore.instance;
-        await firestore.waitForPendingWrites().timeout(pendingWritesTimeout);
-      } on TimeoutException {
-        throw PendingWritesNotFlushedException(pendingWritesTimeout);
-      }
+      await _flushPendingWritesOrThrow(pendingWritesTimeout);
     }
     await _removeFcmTokenBestEffort(pendingWritesTimeout);
     _cacheIsolationController.engageIsolation();
