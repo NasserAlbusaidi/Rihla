@@ -331,8 +331,10 @@ exit 64
           'RIHLA_SKIP_IOS_QA': 'yes',
           // Process.run merges the parent environment; a release audit runs
           // this suite WITH the single-device override exported, which must
-          // not leak into the strict-mode pin.
+          // not leak into the strict-mode pin. Same for the per-release
+          // device-presence skip (#1291) — a v1.9.3-style audit exports it.
           'RIHLA_SINGLE_DEVICE_QA_OK': '',
+          'RIHLA_SKIP_DEVICE_PRESENCE_QA': '',
         },
       );
 
@@ -381,6 +383,10 @@ exit 64
           'PATH': '${tempDir.path}:${Platform.environment['PATH']}',
           'RIHLA_SKIP_IOS_QA': 'yes',
           'RIHLA_SINGLE_DEVICE_QA_OK': 'yes',
+          // Hermeticity vs a release audit that exports the presence skip
+          // (#1291) — this test pins single-DEVICE acceptance, which needs
+          // the device check to actually run.
+          'RIHLA_SKIP_DEVICE_PRESENCE_QA': '',
         },
       );
 
@@ -393,6 +399,37 @@ exit 64
         output,
         isNot(contains('At least two physical Android devices required')),
       );
+    },
+  );
+
+  test(
+    'RIHLA_SKIP_DEVICE_PRESENCE_QA=yes skips ONLY device presence — '
+    'remaining checks still run and the gate passes (#1291)',
+    () async {
+      final result = await Process.run(
+        'bash',
+        ['tool/check_real_device_qa_gate.sh'],
+        environment: {
+          'RIHLA_SKIP_IOS_QA': 'yes',
+          'RIHLA_SKIP_DEVICE_PRESENCE_QA': 'yes',
+          'RIHLA_SINGLE_DEVICE_QA_OK': '',
+        },
+      );
+
+      final output = '${result.stdout}\n${result.stderr}';
+      expect(result.exitCode, 0);
+      expect(
+        output,
+        contains('device-presence check SKIPPED by explicit owner decision'),
+      );
+      // The skip must not swallow the rest of the gate.
+      expect(output, contains('Real-device QA matrix is complete'));
+      expect(
+        output,
+        contains('config.json exists and does not enable Firebase emulators'),
+      );
+      expect(output, contains('Real-device QA gate PASS'));
+      expect(output, isNot(contains('No physical Android device detected')));
     },
   );
 
