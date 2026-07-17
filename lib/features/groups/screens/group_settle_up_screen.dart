@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,7 @@ import '../../../core/extensions/build_context_l10n.dart';
 import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/money_serializer.dart';
+import '../../../core/services/review_prompt.dart';
 import '../../../core/utils/bidi.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
@@ -529,6 +532,9 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // rebuild between steps). The walk dies with the screen, so a captured list
     // is never re-run after death (L5).
     final connectivity = ref.read(connectivityProvider.notifier);
+    // #1263: same capture discipline — the walk-end review ask must not read
+    // `ref` on a possibly-disposed element.
+    final reviewPrompt = ref.read(reviewPromptProvider);
     // Capture context-derived handles ONCE before the loop's awaits (same
     // #104/#412 discipline): the final summary snackbar uses them after the
     // walk without re-reading a possibly-disposed context.
@@ -577,6 +583,8 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         ),
       );
     }
+    // #1263: one review ask per completed walk (see the single-tile site).
+    unawaited(reviewPrompt.maybeRequest());
   }
 
   /// Drives one record sheet → validate → write. Returns the per-step
@@ -635,6 +643,10 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         : currentUid == toUserId
         ? RecordPaymentPerspective.receiving
         : RecordPaymentPerspective.recording;
+    // #1263: captured BEFORE the awaits (the #104/#412 discipline) — the
+    // review ask is an app-level post-write effect that must survive the
+    // screen being disposed mid-write, never a `ref` read on a dead element.
+    final reviewPrompt = ref.read(reviewPromptProvider);
     final result = await showRecordPaymentSheet(
       context,
       currency: currency,
@@ -767,6 +779,16 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
         currency: currency,
         groupName: group.name,
       );
+    }
+
+    // #1263: a completed settle is the natural review moment. Fire-and-forget —
+    // cooldown/availability/emulator gating all live inside ReviewPrompt. The
+    // #1129 idempotent replay never re-prompts (same reasoning as the #367
+    // nudge above); stepped walks prompt once at walk end, not per step.
+    if (stepLabel == null &&
+        outcome.kind == _StepOutcomeKind.recorded &&
+        !outcome.alreadyRecorded) {
+      unawaited(reviewPrompt.maybeRequest());
     }
     return outcome;
   }
