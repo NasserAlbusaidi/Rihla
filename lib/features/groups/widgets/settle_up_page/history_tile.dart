@@ -19,6 +19,7 @@ import '../../keys/group_keys.dart';
 
 class HistoryTile extends StatelessWidget {
   const HistoryTile({
+    super.key,
     required this.settlement,
     required this.displayNames,
     required this.subjectName,

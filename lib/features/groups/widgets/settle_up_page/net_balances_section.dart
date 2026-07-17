@@ -7,7 +7,11 @@ import 'net_balance_row.dart';
 import 'section_label.dart';
 
 class NetBalancesSection extends StatelessWidget {
-  const NetBalancesSection({required this.balances, required this.currency});
+  const NetBalancesSection({
+    super.key,
+    required this.balances,
+    required this.currency,
+  });
 
   final List<UserBalance> balances;
   final String currency;

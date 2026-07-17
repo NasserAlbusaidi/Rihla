@@ -12,6 +12,7 @@ import '../../../events/utils/event_display.dart';
 
 class EventRow extends StatelessWidget {
   const EventRow({
+    super.key,
     required this.event,
     required this.shareLines,
     required this.groupCurrency,

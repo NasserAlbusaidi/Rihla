@@ -6,7 +6,7 @@ import '../../../../core/extensions/build_context_l10n.dart';
 import '../../../../core/theme/tokens/domain_aliases.dart';
 
 class OverflowMenu extends StatelessWidget {
-  const OverflowMenu({required this.groupId});
+  const OverflowMenu({super.key, required this.groupId});
   final String groupId;
 
   @override

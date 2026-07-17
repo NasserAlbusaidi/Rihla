@@ -10,6 +10,7 @@ import '../../../ledger/models/expense_model.dart';
 
 class NetBalanceRow extends StatelessWidget {
   const NetBalanceRow({
+    super.key,
     required this.balance,
     required this.currency,
     required this.showDivider,

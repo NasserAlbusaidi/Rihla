@@ -16,6 +16,7 @@ import 'secondary_cta_button.dart';
 
 class BalanceCard extends StatelessWidget {
   const BalanceCard({
+    super.key,
     required this.group,
     required this.lines,
     required this.memberNames,
