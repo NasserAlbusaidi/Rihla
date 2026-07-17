@@ -765,12 +765,13 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // GROUP settle spans events, so the message names only the group.
     // An #1129 idempotent replay never re-nudges — the user already recorded
     // (and was offered the nudge for) this exact payment once.
+    var handedOff = false;
     if (stepLabel == null &&
         currentUid == fromUserId &&
         outcome.kind == _StepOutcomeKind.recorded &&
         !outcome.alreadyRecorded &&
         context.mounted) {
-      await _offerWhatsAppNotify(
+      handedOff = await _offerWhatsAppNotify(
         context,
         // Plain raw name for the greeting — the app-internal disambiguator
         // suffix doesn't belong in a message sent TO that person.
@@ -785,9 +786,13 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
     // cooldown/availability/emulator gating all live inside ReviewPrompt. The
     // #1129 idempotent replay never re-prompts (same reasoning as the #367
     // nudge above); stepped walks prompt once at walk end, not per step.
+    // #1277: an accepted nudge backgrounds the app; Play/StoreKit silently
+    // no-op while the cooldown at review_prompt.dart:60 would still burn — so
+    // defer the ask to the next natural moment instead.
     if (stepLabel == null &&
         outcome.kind == _StepOutcomeKind.recorded &&
-        !outcome.alreadyRecorded) {
+        !outcome.alreadyRecorded &&
+        !handedOff) {
       unawaited(reviewPrompt.maybeRequest());
     }
     return outcome;
@@ -796,7 +801,13 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
   /// #367: present the post-record nudge and, if accepted, open WhatsApp
   /// prefilled with the past-tense group-scoped message. Numberless; falls back
   /// to the OS share sheet when WhatsApp isn't installed.
-  Future<void> _offerWhatsAppNotify(
+  ///
+  /// Returns whether an external hand-off was actually attempted (#1277):
+  /// true iff the user accepted the nudge AND [shareViaWhatsApp] ran — either
+  /// branch it takes (the WhatsApp deep link or the OS share-sheet fallback)
+  /// backgrounds the app, so callers use this to skip a review ask that would
+  /// otherwise fire while Rihla is backgrounded.
+  Future<bool> _offerWhatsAppNotify(
     BuildContext context, {
     required String recipientName,
     required Decimal amount,
@@ -814,11 +825,12 @@ class _GroupSettleUpScreenState extends ConsumerState<GroupSettleUpScreen> {
       recipientName: recipientName,
       message: message,
     );
-    if (!wantsNotify || !context.mounted) return;
+    if (!wantsNotify || !context.mounted) return false;
     await shareViaWhatsApp(
       message,
       fallback: () => shareText(context, message),
     );
+    return true;
   }
 
   /// #752: record a group transfer by DECOMPOSING it into per-event settlement

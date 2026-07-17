@@ -3,7 +3,11 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:in_app_review/in_app_review.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
 import 'package:safar/core/providers/settings_provider.dart';
 import 'package:safar/core/services/review_prompt.dart';
@@ -38,6 +42,12 @@ class _SpyReviewPrompt extends ReviewPrompt {
   @override
   Future<void> maybeRequest() async => calls++;
 }
+
+class _MockInAppReview extends Mock implements InAppReview {}
+
+class _MockUrlLauncher extends Mock
+    with MockPlatformInterfaceMixin
+    implements UrlLauncherPlatform {}
 
 void main() {
   const groupId = 'group-1';
@@ -84,6 +94,10 @@ void main() {
     FakeFirebaseFirestore fakeDb, {
     RecordingFunctionsService? functions,
     ValueNotifier<bool>? showScreen,
+    // #1277: lets a test wire the REAL ReviewPrompt (+ a mocked InAppReview)
+    // instead of the call-counting spy below, so it can assert on the actual
+    // cooldown-prefs write, not just an invocation count.
+    List<Override> extraOverrides = const [],
   }) {
     final overrides = [
       sharedPreferencesProvider.overrideWithValue(prefs),
@@ -119,6 +133,7 @@ void main() {
         GroupActivityService.withFirestore(fakeDb),
       ),
       reviewPromptProvider.overrideWith((ref) => spy = _SpyReviewPrompt(ref)),
+      ...extraOverrides,
     ];
 
     const screen = SettleUpScreen(groupId: groupId, eventId: eventId);
@@ -225,4 +240,85 @@ void main() {
       expect(spy?.calls ?? 0, 1);
     },
   );
+
+  // #1277: an ACCEPTED WhatsApp nudge backgrounds the app (external launch or
+  // the share-sheet fallback) — Play/StoreKit silently no-op while
+  // backgrounded, but ReviewPrompt.maybeRequest still burns the 14-day
+  // cooldown at review_prompt.dart:60 before the no-op request. These tests
+  // wire the REAL ReviewPrompt (not the call-counting spy) against a mocked
+  // InAppReview so a cooldown-prefs write is directly observable.
+  group('#1277 review-ask deferred on WhatsApp hand-off', () {
+    late _MockInAppReview review;
+
+    setUp(() {
+      review = _MockInAppReview();
+      when(review.isAvailable).thenAnswer((_) async => true);
+      when(review.requestReview).thenAnswer((_) async {});
+    });
+
+    testWidgets(
+      'accepted nudge hand-off skips the review ask and does not burn the '
+      'cooldown',
+      (tester) async {
+        registerFallbackValue(const LaunchOptions());
+        final launcher = _MockUrlLauncher();
+        UrlLauncherPlatform.instance = launcher;
+        when(() => launcher.canLaunch(any())).thenAnswer((_) async => true);
+        when(
+          () => launcher.launchUrl(any(), any()),
+        ).thenAnswer((_) async => true);
+
+        final fakeDb = FakeFirebaseFirestore();
+        await tester.pumpWidget(
+          buildScreen(
+            fakeDb,
+            extraOverrides: [
+              inAppReviewProvider.overrideWithValue(review),
+              reviewPromptProvider.overrideWith(
+                (ref) => ReviewPrompt(ref, emulatorRun: false),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(
+          find.byKey(GroupKeys.settleUpRecordPaymentButton),
+        );
+        await tester.tap(find.byKey(GroupKeys.settleUpRecordPaymentButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(GroupKeys.markAsPaidButton));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(GroupKeys.settleNotifySheet), findsOneWidget);
+        await tester.tap(find.byKey(GroupKeys.settleNotifyWhatsAppButton));
+        await tester.pumpAndSettle();
+
+        verifyNever(review.requestReview);
+        expect(prefs.getInt(ReviewPrompt.lastAttemptPrefsKey), isNull);
+      },
+    );
+
+    testWidgets('a declined nudge still asks for a review', (tester) async {
+      final fakeDb = FakeFirebaseFirestore();
+      await tester.pumpWidget(
+        buildScreen(
+          fakeDb,
+          extraOverrides: [
+            inAppReviewProvider.overrideWithValue(review),
+            reviewPromptProvider.overrideWith(
+              (ref) => ReviewPrompt(ref, emulatorRun: false),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // recordOnce dismisses the nudge sheet via "Not now" when it appears.
+      await recordOnce(tester);
+
+      verify(review.requestReview).called(1);
+      expect(prefs.getInt(ReviewPrompt.lastAttemptPrefsKey), isNotNull);
+    });
+  });
 }
