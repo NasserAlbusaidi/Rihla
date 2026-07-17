@@ -664,6 +664,91 @@ describe('joinGroupByInviteCode — display-name collision guard (#279)', () => 
   });
 });
 
+describe('joinGroupByInviteCode — #1282 member cap', () => {
+  // seedInviteGroup() (beforeEach) seeds 'owner' as the sole existing member.
+  // padMembers grows the roster with uniquely-named synthetic members so the
+  // #279 collision scan never interferes with the cap assertions below.
+  async function padMembers(count: number): Promise<void> {
+    const db = getFirestore();
+    const ids = Array.from({ length: count }, (_, i) => `m${i + 1}`);
+    await db.doc('groups/g1').update({ memberIds: ['owner', ...ids] });
+    await Promise.all(ids.map((id, i) => db.doc(`groups/g1/members/${id}`).set({
+      id,
+      userId: id,
+      displayName: `Member${i + 1}`,
+      role: 'MEMBER',
+      joinedAt: new Date(),
+      isShadow: false,
+    })));
+  }
+
+  test('at 50 members, a genuinely-new join is rejected and the throttle is NOT burned', async () => {
+    await padMembers(49); // 'owner' + 49 synthetic = 50
+
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Newcomer' },
+      auth: { uid: 'newcomer' },
+    } as any)).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: expect.stringContaining('maximum number of members'),
+      details: { reason: 'group-full' },
+    });
+
+    const db = getFirestore();
+    // Roster untouched by the rejected join.
+    expect((await db.doc('groups/g1').get()).data()?.memberIds).toHaveLength(50);
+    expect((await db.doc('groups/g1/members/newcomer').get()).exists).toBe(false);
+    // #1282: a full group is a legitimate user outcome, not enumeration signal
+    // — must NOT count toward the 5/hr join throttle (isLookupFailure exemption
+    // via the details.reason tag).
+    expect((await db.doc('joinAttempts/newcomer').get()).exists).toBe(false);
+  });
+
+  test('at 49 members, a genuinely-new join succeeds and lands the 50th member', async () => {
+    await padMembers(48); // 'owner' + 48 synthetic = 49
+
+    // displayName is deliberately chosen to collide with NO seeded member
+    // (Owner, Member1..Member48) — the #279 uniqueness scan still runs for a
+    // didJoin-true join under cap, and a collision would reject with
+    // `already-exists` before this test could exercise the cap boundary.
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Newcomer' },
+      auth: { uid: 'newcomer' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    const db = getFirestore();
+    expect((await db.doc('groups/g1').get()).data()?.memberIds).toHaveLength(50);
+    expect((await db.doc('groups/g1/members/newcomer').get()).exists).toBe(true);
+  });
+
+  test('at 50 members, an idempotent re-join by an existing member still succeeds', async () => {
+    await padMembers(49); // 'owner' + 49 synthetic = 50
+
+    // didJoin is false here (member doc + memberIds entry both already exist),
+    // so the cap check (gated on didJoin) must not block this re-join.
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Owner' },
+      auth: { uid: 'owner' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+  });
+
+  test('at 50 members, the #53 heal path (uid in memberIds, member doc missing) still succeeds', async () => {
+    await padMembers(49); // 'owner' + 49 synthetic = 50
+    const db = getFirestore();
+    // Heal scenario: uid stays in memberIds, but its member doc is gone.
+    await db.doc('groups/g1/members/m1').delete();
+
+    // didJoin is false here (uid already in memberIds), so the cap check must
+    // not block the heal — it doesn't grow memberIds, only recreates the doc.
+    await expect(wrapped({
+      data: { inviteCode: 'ABC123', displayName: 'Member1' },
+      auth: { uid: 'm1' },
+    } as any)).resolves.toEqual({ groupId: 'g1' });
+
+    expect((await db.doc('groups/g1/members/m1').get()).exists).toBe(true);
+  });
+});
+
 describe('joinGroupByInviteCode — legacy uuid-keyed member re-join (#1212)', () => {
   // Member-doc keying is MIXED: post-#524 client docs key by {uid}, but legacy
   // pre-#524 creator docs (and server-minted shadows) are keyed by a random uuid
