@@ -997,6 +997,68 @@ void main() {
     );
 
     testWidgets(
+      '#1282: group-full join shows the Arabic roster-cap copy under ar locale',
+      (tester) async {
+        // The provider's canned group-full string is locale-independent; the
+        // screen's _errorMessage re-localizes it, so under ar this must render
+        // the AR groupJoinGroupFull copy (Western digits per house style).
+        SharedPreferences.setMockInitialValues({
+          'settings_device_name': 'Joiner',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final fakeDb = FakeFirebaseFirestore();
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupLoadingProvider.overrideWith((ref) => false),
+              groupErrorProvider.overrideWith((ref) => null),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-joiner',
+                  joinGroupCallableOverride:
+                      ({required inviteCode, required displayName}) async {
+                        throw FirebaseFunctionsException(
+                          code: 'failed-precondition',
+                          message:
+                              'This group has reached the maximum number of members.',
+                          details: const {'reason': 'group-full'},
+                        );
+                      },
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              locale: const Locale('ar'),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const JoinGroupScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        await tester.enterText(find.byType(TextFormField).first, 'Joiner');
+        await tester.enterText(find.byType(TextFormField).last, 'ABCD23');
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('هذه المجموعة ممتلئة — وصلت إلى الحد الأقصى (50 عضوًا).'),
+          findsOneWidget,
+        );
+        // NOT the generic AR failure copy.
+        expect(
+          find.text('تعذّر الانضمام إلى المجموعة. تحقق من اتصالك وحاول مرة أخرى.'),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
       '#633: successful join marks the group aggregate dirty before routing',
       (tester) async {
         SharedPreferences.setMockInitialValues({
