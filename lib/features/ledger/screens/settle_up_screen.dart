@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +11,7 @@ import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/firebase_functions_service.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/services/money_serializer.dart';
+import '../../../core/services/review_prompt.dart';
 import '../../../core/theme/tokens/domain_aliases.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/localized_decimal_input.dart';
@@ -553,6 +556,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         ),
       );
     }
+    // #1263: one review ask per completed walk (see the single-tile site).
+    unawaited(ref.read(reviewPromptProvider).maybeRequest());
   }
 
   /// #773: the LIVE directed-pair outstanding for [currency], recomputed from a
@@ -784,6 +789,16 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         eventName: eventName,
         groupName: groupName ?? '',
       );
+    }
+
+    // #1263: a completed settle is the natural review moment. Fire-and-forget —
+    // cooldown/availability/emulator gating all live inside ReviewPrompt. The
+    // #1129 idempotent replay never re-prompts (same reasoning as the #367
+    // nudge above); stepped walks prompt once at walk end, not per step.
+    if (stepLabel == null &&
+        outcome.kind == _StepOutcomeKind.recorded &&
+        !outcome.alreadyRecorded) {
+      unawaited(ref.read(reviewPromptProvider).maybeRequest());
     }
     return outcome;
   }
