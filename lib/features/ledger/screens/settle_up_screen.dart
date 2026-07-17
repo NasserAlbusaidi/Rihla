@@ -780,12 +780,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     // #282 / settle-on-behalf #595 never nudge), and a clean record. An #1129
     // idempotent replay never re-nudges — the user already recorded (and was
     // offered the nudge for) this exact payment once.
+    var handedOff = false;
     if (stepLabel == null &&
         currentUid == fromUserId &&
         outcome.kind == _StepOutcomeKind.recorded &&
         !outcome.alreadyRecorded &&
         context.mounted) {
-      await _offerWhatsAppNotify(
+      handedOff = await _offerWhatsAppNotify(
         context,
         // Plain raw name for the greeting — the app-internal disambiguator
         // suffix ("(former member)" / "(2)") doesn't belong in a message sent
@@ -802,9 +803,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     // cooldown/availability/emulator gating all live inside ReviewPrompt. The
     // #1129 idempotent replay never re-prompts (same reasoning as the #367
     // nudge above); stepped walks prompt once at walk end, not per step.
+    // #1277: an accepted nudge backgrounds the app; Play/StoreKit silently
+    // no-op while the cooldown at review_prompt.dart:60 would still burn — so
+    // defer the ask to the next natural moment instead.
     if (stepLabel == null &&
         outcome.kind == _StepOutcomeKind.recorded &&
-        !outcome.alreadyRecorded) {
+        !outcome.alreadyRecorded &&
+        !handedOff) {
       unawaited(reviewPrompt.maybeRequest());
     }
     return outcome;
@@ -814,7 +819,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   /// prefilled with the past-tense scoped message. Numberless — the user picks
   /// the recipient in WhatsApp; WhatsApp-not-installed falls back to the OS share
   /// sheet so the courtesy can never dead-end.
-  Future<void> _offerWhatsAppNotify(
+  ///
+  /// Returns whether an external hand-off was actually attempted (#1277):
+  /// true iff the user accepted the nudge AND [shareViaWhatsApp] ran — either
+  /// branch it takes (the WhatsApp deep link or the OS share-sheet fallback)
+  /// backgrounds the app, so callers use this to skip a review ask that would
+  /// otherwise fire while Rihla is backgrounded.
+  Future<bool> _offerWhatsAppNotify(
     BuildContext context, {
     required String recipientName,
     required Decimal amount,
@@ -836,11 +847,12 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       recipientName: recipientName,
       message: message,
     );
-    if (!wantsNotify || !context.mounted) return;
+    if (!wantsNotify || !context.mounted) return false;
     await shareViaWhatsApp(
       message,
       fallback: () => shareText(context, message),
     );
+    return true;
   }
 
   Future<_StepOutcome> _recordSettlement(
