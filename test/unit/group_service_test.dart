@@ -700,6 +700,104 @@ void main() {
       });
 
       test(
+        '#1282: a details-tagged group-full failed-precondition surfaces the '
+        'roster-cap message, not the generic failed-precondition fallback',
+        () async {
+          SharedPreferences.setMockInitialValues({
+            'settings_device_name': 'Joiner',
+          });
+          final prefs = await SharedPreferences.getInstance();
+          final fakeDb = FakeFirebaseFirestore();
+
+          final container = ProviderContainer(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-joiner',
+                  joinGroupCallableOverride:
+                      ({required inviteCode, required displayName}) async {
+                        throw FirebaseFunctionsException(
+                          code: 'failed-precondition',
+                          message:
+                              'This group has reached the maximum number of members.',
+                          details: const {'reason': 'group-full'},
+                        );
+                      },
+                ),
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          expect(
+            () => container
+                .read(groupServiceProvider)
+                .joinGroup(inviteCode: 'ABC123'),
+            throwsA(
+              isA<Exception>().having(
+                (error) => error.toString(),
+                'message',
+                contains('maximum number of members'),
+              ),
+            ),
+          );
+        },
+      );
+
+      test(
+        '#1282: a details-LESS failed-precondition (e.g. the event fan-in '
+        'bound or a malformed invite/membership doc) still maps to the '
+        'generic fallback — a code-only arm would mislabel it as group-full',
+        () async {
+          SharedPreferences.setMockInitialValues({
+            'settings_device_name': 'Joiner',
+          });
+          final prefs = await SharedPreferences.getInstance();
+          final fakeDb = FakeFirebaseFirestore();
+
+          final container = ProviderContainer(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              groupServiceProvider.overrideWith(
+                (ref) => GroupService.withFirestore(
+                  ref,
+                  fakeDb,
+                  currentUserId: 'uid-joiner',
+                  joinGroupCallableOverride:
+                      ({required inviteCode, required displayName}) async {
+                        throw FirebaseFunctionsException(
+                          code: 'failed-precondition',
+                          message: 'Group has too many events to join safely.',
+                        );
+                      },
+                ),
+              ),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          expect(
+            () => container
+                .read(groupServiceProvider)
+                .joinGroup(inviteCode: 'ABC123'),
+            throwsA(
+              isA<Exception>().having(
+                (error) => error.toString(),
+                'message',
+                allOf(
+                  contains('Could not join group. Try again.'),
+                  isNot(contains('maximum number of members')),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+
+      test(
         'addShadowMember maps unauthenticated to device verification copy',
         () async {
           final fakeDb = FakeFirebaseFirestore();

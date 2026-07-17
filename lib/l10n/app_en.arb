@@ -1824,6 +1824,7 @@
     }
   },
   "groupJoinTooManyAttempts": "Too many attempts. Try again later.",
+  "groupJoinGroupFull": "This group is full — it has reached the 50-member limit.",
   "groupJoinPleaseSignIn": "Please sign in and try again.",
   "groupJoinDeviceVerificationFailed": "Could not verify this device. Try again, or update from the Play Store.",
   "groupJoinFailed": "Couldn't join the group. Check your connection and try again.",

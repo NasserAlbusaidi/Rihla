@@ -6,6 +6,7 @@ import '../admin';
 import { normalizeRequiredDisplayName } from './shared/displayName';
 import { MAX_FAN_IN_EVENTS, applyEventFanIn, collectEventFanIn } from './shared/eventFanIn';
 import { nextActiveMemberIds } from './shared/activeMembers';
+import { MAX_GROUP_MEMBERS } from './shared/groupLimits';
 import { isCurrentMember } from './shared/membership';
 import {
   FanInEventCapture,
@@ -22,11 +23,10 @@ export interface AddShadowMemberOutput {
   memberId: string;
 }
 
-// Generous cap: bounds roster spam + per-write recompute cost. The persona is
-// small friend groups; 50 is far above any real Rihla group. This caps ONLY the
-// shadow-add path — joinGroupByInviteCode stays uncapped. App Check + the
-// creator-only gate are the real controls (#197 — do NOT add per-IP throttling).
-const MAX_GROUP_MEMBERS = 50;
+// #1282: MAX_GROUP_MEMBERS is shared with joinGroupByInviteCode (one basis,
+// no drift between the two roster-growth paths — see shared/groupLimits.ts).
+// App Check + the creator-only gate below are the abuse-posture controls
+// (#197 — do NOT add per-IP throttling).
 
 function normalizeGroupId(groupId: unknown): string {
   if (typeof groupId !== 'string' || groupId.length === 0 || groupId.includes('/')) {

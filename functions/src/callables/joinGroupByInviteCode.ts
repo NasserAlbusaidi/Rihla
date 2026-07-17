@@ -11,6 +11,7 @@ import { logger } from 'firebase-functions/v2';
 import '../admin';
 import { notifyMemberJoin } from '../notifications/memberJoinNotifier';
 import { nextActiveMemberIds } from './shared/activeMembers';
+import { MAX_GROUP_MEMBERS } from './shared/groupLimits';
 import { normalizeInviteCode } from './shared/inviteCode';
 import {
   EventFanInUpdate,
@@ -120,6 +121,17 @@ function isTimestamp(value: unknown): value is Timestamp {
 }
 
 function isLookupFailure(error: unknown): boolean {
+  // #1282: a full-group reject is a legitimate user outcome (the code was
+  // valid — the group just happens to be full), not enumeration signal. Tag-
+  // exempt it from the throttle rather than switching its code away from
+  // 'failed-precondition' (would break addShadowMember error-shape parity).
+  const details = (error as { details?: unknown }).details;
+  if (
+    details && typeof details === 'object'
+    && (details as { reason?: unknown }).reason === 'group-full'
+  ) {
+    return false;
+  }
   const code = (error as { code?: unknown }).code;
   return code === 'not-found' || code === 'failed-precondition';
 }
@@ -301,6 +313,18 @@ export const joinGroupByInviteCode = onCall<
         didJoin = !hasMemberDocForUid && !memberIds.includes(uid);
         existingMemberIds = memberIds;
         groupName = typeof groupData.name === 'string' ? groupData.name : '';
+
+        // #1282: cap genuinely-new joins only — didJoin=false re-joins and the
+        // #53/#1212 heal paths must pass at cap (they don't grow the roster).
+        // details.reason exempts this from the join throttle in isLookupFailure:
+        // a full group implies a VALID code — user outcome, not enumeration.
+        if (didJoin && memberIds.length >= MAX_GROUP_MEMBERS) {
+          throw new HttpsError(
+            'failed-precondition',
+            'This group has reached the maximum number of members.',
+            { reason: 'group-full' },
+          );
+        }
 
         // #279: reject a brand-new join whose display name collides
         // (case-insensitive, trimmed) with an existing member — duplicate names

@@ -341,6 +341,12 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     if (error.contains('Please sign in')) {
       return context.l10n.groupJoinPleaseSignIn;
     }
+    // #1282: matches the provider's canned group-full string (group_provider.dart
+    // _callJoinGroupByInviteCode), not the raw server message — the #279
+    // re-localization contract.
+    if (error.contains('maximum number of members')) {
+      return context.l10n.groupJoinGroupFull;
+    }
     // #648/#818: join/create no longer require durable-credential gating, so
     // there's no 'linked account' branch.
     return context.l10n.groupJoinFailed;
